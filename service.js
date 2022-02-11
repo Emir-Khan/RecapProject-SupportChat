@@ -37,3 +37,5 @@ const port = 8002; // Serverimizin dinleyeceği portu söylüyoruz.
 server.listen(port, () => { // Bizim kurduğumuz server yapısının kapısının ismini bir üst satırda söylediğimiz porttan dinlemesini söylüyoruz.
     console.log('Server is listening on:' + port + ' now...'); // Dinlediğinin kanıtı olarak ekrana yazdırıyoruz.
 });
+
+// not IO tüm kullanıcılara gönderir SOCKET kanala
