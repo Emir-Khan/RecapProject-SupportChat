@@ -23,6 +23,7 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', function (socket) { // Burada input-output kısmına connection durumu olduğunda bir bir kanal açıyoruz her kullanıcı için.
+    socket.join(socket.guid.id)
     console.log('a user connected');// Console bir kişi geldiğini yazdırıyoruz.
     socket.on('chat message', function (msg) { // Eğer açık kanaldan birisi chat message komutu ile bir message yollar ise bunu yakalıyoruz.
         io.emit('chat message', msg); // Yakaladığmız bu mesajı bize bağlı olan bütün açık kanallara emit(yayılma) ediyoruz.
