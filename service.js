@@ -8,7 +8,7 @@ const io = require("socket.io")(server, {
     origins: ["http://localhost:4200", "http://localhost:4201"],
   },
 });
-var rooms = [];
+var rooms = {};
 
 app.get("/", (req, res) => {
   // res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,8 +20,11 @@ io.on("connection", (socket) => {
   // join user's own room
   socket.join(socket.id);
   console.log("----------------\na user connected");
+
   socket.on("disconnect", () => {
-    console.log("user disconnected");
+    console.log("user " + rooms[socket.id] + " disconnected");
+    io.emit("offline person", rooms[socket.id]);
+    delete rooms[socket.id];
   });
   socket.on("support message", ({ message, roomName }) => {
     console.log("here is support message " + message);
@@ -31,19 +34,18 @@ io.on("connection", (socket) => {
   socket.on("join", (roomName) => {
     console.log("join: " + roomName);
     socket.join(roomName);
-    if(!rooms.includes(roomName)){
-        rooms.push(roomName);
+    if (Object.values(rooms).indexOf(roomName) <= -1) {
+      rooms[socket.id.toString()] = roomName;
     }
-    console.log(rooms)
-    io.to(roomName).emit("rooms", rooms);
+
+    console.log(rooms);
+    io.emit("online rooms", Object.values(rooms));
   });
 
   socket.on("message", ({ message, roomName }) => {
     console.log("message: " + message + " in " + roomName);
-    // send socket to all in room except sender
+
     io.to(roomName).emit("user msg", message);
-    // send to all including sender
-    // io.to(roomName).emit("message", message);
   });
 });
 
