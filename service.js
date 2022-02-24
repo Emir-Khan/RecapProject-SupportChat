@@ -14,39 +14,41 @@ var nowRoom;
 
 redisClient.on("connect", async function () {
   console.log("Redis client bağlandı");
-  // redisClient.hSet('test1', 'deneme', "cookieId")
-  // redisClient.hSet('test1', 'status', true)
+
   io.on("connection", (socket) => {
     // join user's own room
     socket.join(socket.id);
     console.log("----------------\na user connected");
 
     socket.on("disconnect", async () => {
-      console.log("user  disconnected");
+      console.log("SOCKET ID ",socket.id)
       let exitedUser = await redisClient.hGet("online-rooms",socket.id);
-      console.log("EXITED USER ",exitedUser)
+      let objUser = JSON.parse(exitedUser)
       redisClient.hDel("online-rooms", socket.id);
-      redisClient.hSet("offline-rooms", exitedUser);
+      redisClient.hSet("offline-rooms", objUser.roomName,JSON.stringify({date:Date.now(),"roomName":objUser.roomName,name:objUser.name,email:objUser.email}));
       let res = await redisClient.hGetAll("online-rooms");
       let res1 = await redisClient.hGetAll("offline-rooms");
       
-      io.emit("online rooms", Object.keys(res));
-      io.emit("offline rooms", Object.keys(res1));
+      io.emit("online rooms", Object.values(res));
+      io.emit("offline rooms", Object.values(res1));
     });
 
-    socket.on("join", async (roomName) => {
-      console.log("join: " + roomName);
-     
-      socket.join(roomName);
+    socket.on("join", async (roomName,data) => {
+      let objData = JSON.parse(data)
 
-      redisClient.hSet("online-rooms", socket.id, roomName, Date.now());
+      console.log("join: " + roomName);
+
+      console.log("SOCKET ID JOINED ",socket.id)
+      socket.join(roomName);
+      
+      redisClient.hSet("online-rooms", socket.id, JSON.stringify({date:Date.now(),name:objData.name,email:objData.email,"roomName":roomName}));
       redisClient.hDel("offline-rooms", roomName);
-      //date ye göre sırala front endde
+
       let onlineResponse = await redisClient.hGetAll("online-rooms");
       let offlineResponse = await redisClient.hGetAll("offline-rooms");
-      console.log("ACTIVE ROOMS ", onlineResponse);
+      
+      console.log("\n******************\nACTIVE ROOMS ", onlineResponse);
       console.log("OFF ROOMS ", offlineResponse);
-      console.log("NOW ROOM ", nowRoom);
 
       io.emit("online rooms", Object.values(onlineResponse));
       io.emit("offline rooms", Object.values(offlineResponse));
@@ -54,12 +56,12 @@ redisClient.on("connect", async function () {
 
     async function getOldMessages(roomName){
       let a = await redisClient.hGetAll(roomName);
-      console.log(a);
       let keys = Object.keys(a)
+
       for (let i = 1,index=0; i < Object.keys(a).length+1; i++,index++) {
         a[keys[index]] = JSON.parse(a[keys[index]])
       }
-      console.log(a);
+      
       io.to(roomName).emit("get message",a)
     }
     socket.on("join to room", async (roomName) => {
@@ -69,16 +71,19 @@ redisClient.on("connect", async function () {
 
     })
 
-    socket.on("support message", ({ message, roomName }) => {
+    socket.on("support message", ({ message, roomName },senderData) => {
+      let userName = JSON.parse(senderData).name
       console.log("here is support message " + message);
-      io.to(roomName).emit("sup msg", message);
-      redisClient.hSet(roomName,Date.now(),'{"message":"'+message+'","sender":"support"}')
+      io.to(roomName).emit("sup msg", message,userName);
+      redisClient.hSet(roomName,Date.now(),JSON.stringify({message:message,name:userName,"sender":"support"}))
     });
 
-    socket.on("message", ({ message, roomName }) => {
+    socket.on("message", ({ message, roomName },senderData) => {
+      let userName = JSON.parse(senderData).name
+      console.log(userName)
       console.log("message: " + message + " in " + roomName);
-      io.to(roomName).emit("user msg", message);
-      redisClient.hSet(roomName,""+Date.now()+"",'{"message":"'+message+'","sender":"user"}')
+      io.to(roomName).emit("user msg", message,userName);
+      redisClient.hSet(roomName,Date.now(),JSON.stringify({message:message,name:userName,"sender":"user"}))
     });
 
   });
@@ -95,8 +100,6 @@ const io = require("socket.io")(server, {
 });
 
 app.get("/", (req, res) => {
-  // res.setHeader('Access-Control-Allow-Origin', '*');
-  // res.send('asasd');
   res.sendFile("./index.html", { root: __dirname });
 });
 
