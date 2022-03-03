@@ -161,7 +161,7 @@ redisClient.on("connect", async function () {
       console.log("NOW ROOM ", nowRoom);
     });
 
-    socket.on("support message", ({ message, roomName }, senderData) => {
+    socket.on("support message", ({ message, roomName }, senderData) => { 
       let userName = JSON.parse(senderData).name;
       console.log("here is support message " + message);
       io.to(roomName).emit("sup msg", message, userName);
